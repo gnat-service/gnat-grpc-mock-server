@@ -104,10 +104,11 @@ describe('register()', () => {
 
                 beforeEach(async () => collector && collector.clearup());
 
+                let providerColl;
                 // provider verify contract.
                 beforeEach(async () => {
                     i = 0;
-                    collector = await provider(
+                    providerColl = await provider(
                         getServerOpts(
                             {
                                 port: 50032,
@@ -123,10 +124,10 @@ describe('register()', () => {
                     );
                 });
                 afterEach(() => fs.unlinkSync(outputFile));
-                afterEach(() => collector.clearup());
+                afterEach(() => providerColl.clearup());
 
                 it('provider should satisfy the contract', async () => {
-                    await collector.exec();
+                    await providerColl.exec();
                     const expectedJson = require('./expected-contract.json');
                     const json = require(outputFile);
                     assert.deepEqual(json, expectedJson);
