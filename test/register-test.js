@@ -49,7 +49,6 @@ describe('register()', () => {
             it('should return the collected data produced by interactions', async () => {
                 collector = await consumer(getServerOpts());
                 const data = await collector.exec();
-                console.log(expectedContracts);
                 const json = JSON.parse(JSON.stringify(data));
 
                 assert.deepEqual(_.omit(json, 'contracts'), _.omit(expectedJson, 'contracts'));
@@ -58,8 +57,6 @@ describe('register()', () => {
                 _.each(json.contracts, (suite, service) => {
                     _.each(suite, (interaction, methodName) => {
                         assert.instanceOf(interaction.executions, Array);
-                        const e = expectedContracts[service][methodName].executions;
-                        console.log(e)
                         assert.includeDeepMembers(
                             expectedContracts[service][methodName].executions,
                             interaction.executions
@@ -100,7 +97,7 @@ describe('register()', () => {
                     });
                 });
 
-                beforeEach(async () => collector.exec({}, {outputFile}));
+                beforeEach(async () => collector.exec(null, {outputFile}));
 
                 beforeEach(async () => collector && collector.clearup());
 
