@@ -11,6 +11,9 @@ const fs = require('fs');
 const gg = require('gnat-grpc');
 const grpc = require('grpc');
 const protobufjs = require('protobufjs');
+const expectedJson = require('./expected-contract.json');
+
+const {contracts: expectedContracts} = expectedJson;
 
 gg.config({
     root: PATH.join(__dirname, './.proto'),
@@ -24,7 +27,8 @@ const getServerOpts = opts =>
         {
             port: 50031,
             files: [
-                'helloworld.proto'
+                'helloworld.proto',
+                'nest-message.proto',
             ],
             contract,
         }
@@ -40,57 +44,28 @@ describe('register()', () => {
         assert.instanceOf(collector, Consumer);
     });
 
-    const errorAssert = (data, expectation) => {
-        assert.nestedPropertyVal(
-            data,
-            'expectation.reply.error.code',
-            expectation.reply.error.code
-        );
-        assert.nestedPropertyVal(
-            data,
-            'expectation.reply.error.details',
-            expectation.reply.error.details
-        );
-        assert.equal(data.expectation.reply.reply, null);
-    };
-    const replyAssert = (data, expectation) => {
-
-        assert.deepNestedInclude(data, {
-            'expectation.reply.reply': expectation.reply.reply
-        });
-        assert.equal(data.expectation.reply.error, null);
-    };
-
     describe('Collector', () => {
         describe('#exec()', () => {
             it('should return the collected data produced by interactions', async () => {
                 collector = await consumer(getServerOpts());
                 const data = await collector.exec();
-                const results = data.contracts;
-                contract = collector.contract;
-                assert.typeOf(results, 'Object');
-                const result = results['helloworld.Greeter'];
-                const expectation = contract.contracts['helloworld.Greeter'];
+                console.log(expectedContracts);
+                const json = JSON.parse(JSON.stringify(data));
 
-                // request
-                const lengths = {
-                    throwAnErr: 1,
-                    sayHello: 2,
-                };
-                ['throwAnErr', 'sayHello'].forEach(method => {
-                    assert.property(result, method);
-                    assert.lengthOf(result[method], lengths[method]);
-                    assert.nestedProperty(expectation, `${method}.executions`);
-                    assert.lengthOf(expectation[method].executions, lengths[method]);
-                    result[method].forEach((obj, i) => {
-                        const e = expectation[method].executions[i];
-                        assert.deepNestedInclude(obj, {[`expectation.request.args`]: e.request.args});
+                assert.deepEqual(_.omit(json, 'contracts'), _.omit(expectedJson, 'contracts'));
+                assert.typeOf(json.contracts, 'Object');
+
+                _.each(json.contracts, (suite, service) => {
+                    _.each(suite, (interaction, methodName) => {
+                        assert.instanceOf(interaction.executions, Array);
+                        const e = expectedContracts[service][methodName].executions;
+                        console.log(e)
+                        assert.includeDeepMembers(
+                            expectedContracts[service][methodName].executions,
+                            interaction.executions
+                        )
                     });
                 });
-
-                errorAssert(result.throwAnErr[0], expectation.throwAnErr.executions[0]);
-                replyAssert(result.sayHello[0], expectation.sayHello.executions[0]);
-                errorAssert(result.sayHello[1], expectation.sayHello.executions[1]);
             });
 
             context('when `Collector.prototype.assertOpts()` is assigned', () => {
@@ -100,14 +75,34 @@ describe('register()', () => {
                 beforeEach(async () => {
                     // consumer create the contract file
                     collector = await consumer(getServerOpts());
-                    await collector.exec({}, {outputFile});
                 });
 
                 beforeEach(async () => {
-                    if (collector) {
-                        await collector.clearup();
-                    }
+                    collector.addInteractions({
+                        'helloworld.Greeter': {
+                            sayHello: {
+                                request: {
+                                    args: {
+                                        name: 'Danna',
+                                        position: '122,322',
+                                        date: new Date('2017-01-01'),
+                                        dbVal: 3.1415926
+                                    }
+                                },
+                                reply: {
+                                    error: {
+                                        code: 2000,
+                                        details: 'user `Danna` not exists'
+                                    }
+                                }
+                            }
+                        }
+                    });
                 });
+
+                beforeEach(async () => collector.exec({}, {outputFile}));
+
+                beforeEach(async () => collector && collector.clearup());
 
                 // provider verify contract.
                 beforeEach(async () => {
@@ -119,10 +114,9 @@ describe('register()', () => {
                                 contract: outputFile,
                                 assertOpts: {
                                     fn (assertion, expectation) {
-                                        assert.deepEqual(assertion, expectation);
                                         i++;
                                     },
-                                    errorFields: ['code']
+                                    errorFields: ['code', 'details']
                                 }
                             }
                         )
@@ -133,7 +127,10 @@ describe('register()', () => {
 
                 it('provider should satisfy the contract', async () => {
                     await collector.exec();
-                    assert.equal(i, 3);
+                    const expectedJson = require('./expected-contract.json');
+                    const json = require(outputFile);
+                    assert.deepEqual(json, expectedJson);
+                    assert.equal(i, 6);
                 });
             });
         });
