@@ -5,7 +5,7 @@
   "license": "MIT",
   "bin": "./bin/gnat-grpc-cdc-server",
   "scripts": {
-    "prepublishOnly": "yarn run cov",
+    "prepublishOnly": "yarn test",
     "test": "mocha test"
   },
   "dependencies": {
