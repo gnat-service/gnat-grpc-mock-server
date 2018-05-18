@@ -9,6 +9,7 @@
     "test": "mocha test"
   },
   "dependencies": {
+    "deep-eql": "^3.0.1",
     "lodash": "^4.17.10"
   },
   "devDependencies": {
