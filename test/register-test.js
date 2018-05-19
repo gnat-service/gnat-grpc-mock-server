@@ -208,7 +208,7 @@ describe('register()', () => {
                             });
                         });
 
-                        context('ignore uncovered keys from provider', () => {
+                        context('not ignore uncovered keys from provider', () => {
                             beforeEach(async () => {
                                 i = 0;
                                 providerColl = await provider(
