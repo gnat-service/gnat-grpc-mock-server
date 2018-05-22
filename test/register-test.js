@@ -13,6 +13,7 @@ const grpc = require('grpc');
 const protobufjs = require('protobufjs');
 const chaiAsPromised = require('chai-as-promised');
 const rawExpectedJson = require('./expected-contract.json');
+const broker = require('gnat-grpc-cdc-broker');
 
 chai.use(chaiAsPromised);
 const {assert} = chai;
@@ -238,6 +239,71 @@ describe('register()', () => {
                         });
                     });
                 });
+            });
+        });
+    });
+
+    describe('work with broker', () => {
+        let i;
+        let providerColl;
+        let outputFile = PATH.join(__dirname, 'contract.json');
+        let brokerServer;
+        let contractBak;
+        const brokerUrl = 'http://localhost:5555';
+
+        beforeEach(done => {
+            broker.config();
+            brokerServer = broker.start(done);
+        });
+
+        beforeEach(async () => {
+            contractBak = contract;
+            contract = _.clone(contract);
+            contract.brokerUrl = brokerUrl;
+            contract.assertOpts = {
+                defaultAssertionOn: true
+            };
+        });
+
+        beforeEach(() => {
+            i = 0;
+        });
+        beforeEach(async () => {
+            collector = await consumer(getServerOpts());
+        });
+        beforeEach(async () => collector.exec(null, {outputFile}));
+
+        afterEach(() => {
+            contract = contractBak;
+        });
+        afterEach(async () => brokerServer && brokerServer.close());
+        afterEach(async () => collector && collector.clearup());
+        afterEach(() => providerColl && providerColl.clearup());
+        afterEach(() => fs.unlinkSync(outputFile));
+
+        context('not ignore uncovered keys from provider', () => {
+            beforeEach(async () => {
+                i = 0;
+                providerColl = await provider(
+                    getServerOpts(
+                        {
+                            port: 50032,
+                            provider: 'provider',
+                            consumer: 'consumer',
+                            brokerUrl,
+                            files: [
+                                'helloworld.proto',
+                                'new-nest-message.proto',
+                            ],
+                        }
+                    )
+                );
+            });
+
+            it('should reject and show the difference between the actual data and expectation', async () => {
+                return assert.isFulfilled(
+                    providerColl.exec({'helloworld.nestmessage.NestMessage': 'changeData'}),
+                );
             });
         });
     });
