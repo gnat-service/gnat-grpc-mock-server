@@ -300,7 +300,7 @@ describe('register()', () => {
                 );
             });
 
-            it('should reject and show the difference between the actual data and expectation', async () => {
+            it('should reject success', async () => {
                 return assert.isFulfilled(
                     providerColl.exec({'helloworld.nestmessage.NestMessage': 'changeData'}),
                 );
