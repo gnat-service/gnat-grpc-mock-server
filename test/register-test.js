@@ -280,6 +280,8 @@ describe('register()', () => {
         afterEach(async () => collector && collector.clearup());
         afterEach(() => providerColl && providerColl.clearup());
         afterEach(() => fs.unlinkSync(outputFile));
+        afterEach(async () => fs.unlinkSync(PATH.join(__dirname, '../contracts/provider-consumer.json')));
+        afterEach(async () => fs.rmdirSync(PATH.join(__dirname, '../contracts')));
 
         context('not ignore uncovered keys from provider', () => {
             beforeEach(async () => {
